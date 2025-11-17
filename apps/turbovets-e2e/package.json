@@ -1,0 +1,10 @@
+{
+  "name": "@rsingh-f74-a20-c7-9490-44-f8-8-cc6-a7-a243-dae9-d5/turbovets-e2e",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "implicitDependencies": [
+      "@rsingh-f74-a20-c7-9490-44-f8-8-cc6-a7-a243-dae9-d5/turbovets"
+    ]
+  }
+}
