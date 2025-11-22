@@ -1,13 +1,20 @@
 {
   "extends": "./tsconfig.base.json",
   "compileOnSave": false,
+
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["apps/turbovets/src/*"],
+      "@/components/*": ["apps/turbovets/src/components/*"],
+      "@/context/*": ["apps/turbovets/src/context/*"]
+    }
+  },
+
   "files": [],
   "references": [
-    {
-      "path": "./apps/turbovets-e2e"
-    },
-    {
-      "path": "./apps/turbovets"
-    }
+    { "path": "./apps/turbovets" },
+    { "path": "./api" },
+    { "path": "./auth" }
   ]
 }

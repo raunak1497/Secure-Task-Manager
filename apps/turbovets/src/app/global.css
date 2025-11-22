@@ -411,3 +411,14 @@ summary svg {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Light mode */
+body {
+  background-color: #f3f4f6; /* light gray */
+}
+
+/* Dark mode */
+body.dark {
+  background-color: #0f172a; /* slate-900 (deep navy) */
+  color: #f8fafc; /* slate-50 (white-ish) */
+}

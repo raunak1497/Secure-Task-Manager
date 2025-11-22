@@ -1,101 +1,257 @@
-# RsinghF74A20C7949044F88CC6A7A243DAE9D5
+# TurboVets – Secure Task Management System (Full‑Stack | RBAC | Audit Logging)
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+This repository contains a **full‑stack secure task management system** built using:
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+- **NestJS (TypeScript)** for backend  
+- **Next.js (React, TypeScript)** for frontend  
+- **Nx Monorepo** architecture  
+- **SQLite + TypeORM**  
+- **Role‑Based Access Control (RBAC)**  
+- **Audit Logging System**  
+- **JWT Authentication**  
+- **Kanban Board UI with Drag & Drop**
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/next?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+---
 
-## Run tasks
+# 📌 Table of Contents
+1. [Setup Instructions](#setup-instructions)
+2. [Environment Variables](#environment-variables)
+3. [Architecture Overview](#architecture-overview)
+4. [Data Model + ERD](#data-model--erd)
+5. [Access Control (RBAC) Design](#access-control-rbac-design)
+6. [JWT Authentication Flow](#jwt-authentication-flow)
+7. [API Documentation](#api-documentation)
+8. [Future Improvements](#future-improvements)
 
-To run the dev server for your app, use:
+---
 
+# 🚀 Setup Instructions
+
+## 1️⃣ Install Dependencies
+```sh
+npm install
+```
+
+## 2️⃣ Run Backend
+```sh
+npx nx serve api
+```
+Backend will start at:  
+👉 **http://localhost:3000**
+
+## 3️⃣ Run Frontend
 ```sh
 npx nx dev turbovets
 ```
+Frontend will start at:  
+👉 **http://localhost:4200** (or port chosen by Nx)
 
-To create a production bundle:
+---
 
-```sh
-npx nx build turbovets
+# 🔐 Environment Variables
+
+Create **api/.env**:
+
+```
+JWT_SECRET=my_super_secret_key
+DB_PATH=./database.sqlite
 ```
 
-To see all available targets to run for a project, run:
+(These are already wired into the TypeORM + JWT config.)
 
-```sh
-npx nx show project turbovets
+---
+
+# 🏗 Architecture Overview
+
+### 🔹 Nx Monorepo Structure
+
+```
+/apps
+  /api        → NestJS backend
+  /turbovets  → Next.js frontend
+
+/libs
+  /auth       → Shared auth decorators (`@Roles()`)
 ```
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+### Why Nx?
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- Shared code between backend & frontend
+- Fast incremental builds
+- Isolated apps but common libraries
+- Great for interviews + scalable for production micro‑frontends
 
-## Add new projects
+---
 
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
+# 🗄 Data Model + ERD
 
-Use the plugin's generator to create new projects.
+### Entities:
+- **User** (id, email, name, password, role, organization)
+- **Organization**
+- **Task** (title, description, status)
+- **AuditLog** (user + action + timestamp)
 
-To generate a new application, use:
+### ERD:
 
-```sh
-npx nx g @nx/next:app demo
+```
+Organization 1 ────┐
+                    │
+                    │
+       User *────────────┐
+                          │
+                          │
+                    Task *
 ```
 
-To generate a new library, use:
-
-```sh
-npx nx g @nx/react:lib mylib
+Audit Log tracks:
+```
+User --performed--> Action (Task Create/Edit/Delete, Login, etc)
 ```
 
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
+---
 
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+# 🔒 Access Control (RBAC) Design
 
-## Set up CI!
+### Roles:
+| Role   | Capabilities |
+|--------|--------------|
+| **Owner** | Full access + all audit logs |
+| **Admin** | CRUD tasks in org + audit logs |
+| **Viewer** | Can only view tasks they created |
 
-### Step 1
+### Enforcement occurs at:
+✔ **Controller layer** (via `@Roles()`)  
+✔ **Service layer** (deep authorization checks)  
 
-To connect to Nx Cloud, run the following command:
-
-```sh
-npx nx connect
+Example:
+```ts
+@Roles(Role.Owner, Role.Admin)
+@Post()
+createTask() { ... }
 ```
 
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
-
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-### Step 2
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
+AND in `TaskService`:
+```ts
+if (authUser.role === 'VIEWER' && task.createdBy.id !== authUser.id) {
+  throw new ForbiddenException();
+}
 ```
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+---
 
-## Install Nx Console
+# 🔑 JWT Authentication Flow
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+1. User logs in → receives `access_token`
+2. Token contains:  
+   `{ id, email, role, orgId }`
+3. Every request includes:
+   `Authorization: Bearer <token>`
+4. `JwtAuthGuard` validates token and attaches `req.user`
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+This powers all RBAC checks.
 
-## Useful links
+---
 
-Learn more:
+# 📡 API Documentation
 
-- [Learn more about this workspace setup](https://nx.dev/nx-api/next?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## 🔐 AUTH
+### Register
+```
+POST /auth/register
+{
+  "name": "John",
+  "email": "john@example.com",
+  "password": "123456"
+}
+```
 
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+### Login
+```
+POST /auth/login
+{
+  "email": "john@example.com",
+  "password": "123456"
+}
+```
+
+### Profile
+```
+GET /auth/me
+→ Returns logged-in user info
+```
+
+---
+
+## 📝 TASKS API
+
+### Create Task (OWNER / ADMIN)
+```
+POST /tasks
+{
+  "title": "Task A",
+  "description": "Details..."
+}
+```
+
+### Get Tasks
+```
+GET /tasks
+```
+
+### Update Task
+```
+PUT /tasks/:id
+```
+
+### Delete Task (OWNER / ADMIN)
+```
+DELETE /tasks/:id
+```
+
+---
+
+## 🧾 Audit Logs API
+
+### Get Logs (OWNER / ADMIN)
+```
+GET /audit-log?filter=day|week|month
+```
+
+---
+
+# 🔮 Future Improvements
+
+### 🚀 1. Advanced Role Delegation
+- Allow custom roles
+- Permission matrix stored in DB
+
+### 🔄 2. Refresh Tokens
+- Access + refresh token pair
+- Logout invalidation
+
+### 🛡 3. Production Security
+- CSRF protection
+- HTTPS enforcement
+- Rate limiting
+- Brute-force login protection
+
+### ⚡ 4. RBAC Caching
+- Cache permissions for speed
+- Invalidate on role changes
+
+### 🧩 5. Scaling & Observability
+- Redis-based session tracking
+- Distributed audit logging
+
+---
+
+# 🎉 Final Notes
+
+This project demonstrates:
+
+- Full-stack architecture
+- Secure backend design
+- Role-based access control
+- Real audit logging
+- Kanban UI with drag & drop
+- NX monorepo engineering practices

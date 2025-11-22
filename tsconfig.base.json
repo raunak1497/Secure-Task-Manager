@@ -15,9 +15,19 @@
     "noUnusedLocals": true,
     "skipLibCheck": true,
     "strict": true,
+    "strictPropertyInitialization": false,
     "target": "es2022",
+
+    "baseUrl": ".",
+    "paths": {
+      "@rsingh/auth": ["auth/src/index.ts"],
+      "@/*": ["apps/turbovets/src/*"],
+      "@/components/*": ["apps/turbovets/src/components/*"],
+      "@/context/*": ["apps/turbovets/src/context/*"]
+    },
+
     "customConditions": [
-      "@rsingh-f74-a20-c7-9490-44-f8-8-cc6-a7-a243-dae9-d5/source"
+      "@rsingh/source"
     ]
   }
 }

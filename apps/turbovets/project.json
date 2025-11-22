@@ -1,0 +1,29 @@
+{
+  "name": "turbovets",
+  "root": "apps/turbovets",
+  "sourceRoot": "apps/turbovets",
+  "projectType": "application",
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "next dev -p 4000",
+        "cwd": "apps/turbovets"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "next build",
+        "cwd": "apps/turbovets"
+      }
+    },
+    "start": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "next start -p 4000",
+        "cwd": "apps/turbovets"
+      }
+    }
+  }
+}
