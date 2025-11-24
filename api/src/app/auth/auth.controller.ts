@@ -7,9 +7,9 @@ import {
   UseGuards,
   Req,
 } from '@nestjs/common';
+
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
-import { Role } from "../entities/user.entity"; // ensure correct import
 
 export class RegisterDto {
   name!: string;
@@ -26,7 +26,6 @@ export class LoginDto {
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  // REGISTER
   @Post('register')
   async register(@Body() body: RegisterDto) {
     const { name, email, password } = body;
@@ -39,49 +38,20 @@ export class AuthController {
     return this.authService.register(name, email, password);
   }
 
-  // LOGIN
   @Post('login')
   async login(@Body() body: LoginDto) {
-    const user = await this.authService.validateUser(body.email, body.password);
-
-    if (!user) {
-      throw new BadRequestException('Invalid email or password');
-    }
-
-    return this.authService.login(user);
+    return this.authService.login(body.email, body.password);
   }
 
-  // GET PROFILE
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getProfile(@Req() req) {
-    // req.user already HAS name, email, role from JwtStrategy
     return {
       id: req.user.id,
       name: req.user.name,
       email: req.user.email,
       role: req.user.role,
+      orgId: req.user.orgId,
     };
-  }
-
-  @Post('promote')
-  async promote(@Body() body: { email: string; role: Role }) {
-    const { email, role } = body;
-
-    // Validate role
-    if (!Object.values(Role).includes(role)) {
-      throw new BadRequestException("Invalid role");
-    }
-
-    // Update user
-    const user = await this.authService.findByEmail(email);
-    if (!user) {
-      throw new BadRequestException("User not found");
-    }
-
-    user.role = role;
-    await this.authService.saveUser(user);
-
-    return { message: `User role updated to ${role}` };
   }
 }

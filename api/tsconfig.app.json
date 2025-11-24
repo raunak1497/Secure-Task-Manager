@@ -23,9 +23,5 @@
     "eslint.config.cjs",
     "eslint.config.mjs"
   ],
-  "references": [
-    {
-      "path": "../auth/tsconfig.lib.json"
-    }
-  ]
+  "references": []
 }

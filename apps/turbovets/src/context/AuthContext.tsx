@@ -3,15 +3,17 @@
 import { createContext, useContext, useState, useEffect } from "react";
 
 export type UserType = {
+  id: number;
   email: string;
   name: string;
-  role: "Owner" | "Admin" | "Viewer";
+  role: "OWNER" | "ADMIN" | "VIEWER";
+  orgId: number;
 } | null;
 
 interface AuthContextType {
   token: string | null;
   user: UserType;
-  login: (token: string, user: UserType) => void;
+  login: (token: string, user: any) => void;
   logout: () => void;
   loading: boolean;
 }
@@ -30,17 +32,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (storedToken) setToken(storedToken);
 
     if (storedUser && storedUser !== "undefined") {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        localStorage.removeItem("user");
-      }
+      const parsed = JSON.parse(storedUser);
+      // ensure uppercase role + orgId exists
+      parsed.role = parsed.role.toUpperCase();
+      setUser(parsed);
     }
 
     setLoading(false);
   }, []);
 
-  const login = (token: string, userData: UserType) => {
+  const login = (token: string, userData: any) => {
+    userData.role = userData.role.toUpperCase();
     setToken(token);
     setUser(userData);
 

@@ -1,24 +1,19 @@
 import {
-  Body,
   Controller,
-  Delete,
   Get,
-  Param,
-  ParseIntPipe,
   Post,
+  Body,
+  Param,
   Put,
-  Req,
+  Delete,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 
-import { TaskService } from './task.service.js';
-import { CreateTaskDto } from './dto/create-task.dto.js';
-import { UpdateTaskDto } from './dto/update-task.dto.js';
-
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-
-// 👉 IMPORTANT: adjust this import to your real npmScope
-import { Roles, Role } from '../../../../auth/src/index.js';
+import { TaskService } from './task.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 
 @Controller('tasks')
 @UseGuards(JwtAuthGuard)
@@ -26,39 +21,31 @@ export class TaskController {
   constructor(private readonly taskService: TaskService) {}
 
   @Post()
-  @Roles(Role.Owner, Role.Admin) // only Owner/Admin can create
-  create(@Body() dto: CreateTaskDto, @Req() req: any) {
+  create(@Body() dto: CreateTaskDto, @Req() req) {
     return this.taskService.create(dto, req.user);
   }
 
   @Get()
-  getAll(@Req() req: any) {
+  findAll(@Req() req) {
     return this.taskService.findAll(req.user);
   }
 
   @Get(':id')
-  getOne(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() req: any,
-  ) {
-    return this.taskService.findOne(id, req.user);
+  findOne(@Param('id') id: string, @Req() req) {
+    return this.taskService.findOne(Number(id), req.user);
   }
 
   @Put(':id')
   update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() dto: UpdateTaskDto,
-    @Req() req: any,
+    @Req() req,
   ) {
-    return this.taskService.update(id, dto, req.user);
+    return this.taskService.update(Number(id), dto, req.user);
   }
 
   @Delete(':id')
-  @Roles(Role.Owner, Role.Admin) // only Owner/Admin can delete
-  remove(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() req: any,
-  ) {
-    return this.taskService.remove(id, req.user);
+  remove(@Param('id') id: string, @Req() req) {
+    return this.taskService.remove(Number(id), req.user);
   }
 }

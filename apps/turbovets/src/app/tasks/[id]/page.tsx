@@ -10,12 +10,13 @@ import { useAuth } from "../../../context/AuthContext";
 function TaskDetails() {
   const { id } = useParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
 
   const [task, setTask] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // NEW: Local state for status before saving
+  // Local state for status before saving
   const [newStatus, setNewStatus] = useState<string>("");
 
   const canModify = user?.role === "OWNER" || user?.role === "ADMIN";
@@ -25,37 +26,47 @@ function TaskDetails() {
   useEffect(() => {
     if (!mounted) return;
     fetchTask();
-  }, [mounted]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, id]);
 
   const fetchTask = async () => {
-    const token = localStorage.getItem("token");
+    try {
+      const res = await axios.get(`http://localhost:3000/tasks/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    const res = await axios.get(`http://localhost:3000/tasks/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    setTask(res.data);
-    setNewStatus(res.data.status); // new: initialize dropdown
+      setTask(res.data);
+      setNewStatus(res.data.status ?? "Pending");
+      setError(null);
+    } catch (err: any) {
+      console.error("Failed to fetch task", err);
+      const msg =
+        err.response?.status === 403
+          ? "You are not allowed to view this task."
+          : "Failed to load task.";
+      setError(msg);
+    }
   };
 
-  // NEW: Save Status only when clicking "Save"
   const saveStatus = async () => {
-    if (!canModify) return;
+    if (!canModify || !task) return;
 
-    const token = localStorage.getItem("token");
+    try {
+      await axios.put(
+        `http://localhost:3000/tasks/${id}`,
+        {
+          title: task.title,
+          description: task.description,
+          status: newStatus,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-    await axios.put(
-      `http://localhost:3000/tasks/${id}`,
-      {
-        title: task.title,
-        description: task.description,
-        status: newStatus,
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    // 👉 Redirect back to tasks page
-    router.push("/tasks");
+      router.push("/tasks");
+    } catch (err) {
+      console.error("Failed to update status", err);
+      alert("Failed to update status");
+    }
   };
 
   const deleteTask = async () => {
@@ -63,16 +74,39 @@ function TaskDetails() {
 
     if (!confirm("Are you sure you want to delete this task?")) return;
 
-    const token = localStorage.getItem("token");
+    try {
+      await axios.delete(`http://localhost:3000/tasks/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    await axios.delete(`http://localhost:3000/tasks/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    router.push("/tasks");
+      router.push("/tasks");
+    } catch (err) {
+      console.error("Failed to delete task", err);
+      alert("Failed to delete task");
+    }
   };
 
-  if (!mounted || !task) return null;
+  if (!mounted) return null;
+
+  if (error) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto text-red-500">
+        {error}
+        <div className="mt-4">
+          <Link
+            href="/tasks"
+            className="text-blue-600 dark:text-blue-400 underline"
+          >
+            ← Back to tasks
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!task) return null;
+
+  const effectiveStatus = newStatus || "Pending";
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
@@ -88,7 +122,7 @@ function TaskDetails() {
               background:
                 user.role === "OWNER"
                   ? "#2563eb"
-                  : user.role === "Admin"
+                  : user.role === "ADMIN"
                   ? "#16a34a"
                   : "#6b7280",
             }}
@@ -117,15 +151,15 @@ function TaskDetails() {
           {task.description}
         </p>
 
-        {/* STATUS SELECT + SAVE BUTTON */}
-        {canModify && (
+        {/* STATUS (Edit if canModify, otherwise read-only badge) */}
+        {canModify ? (
           <div className="mt-4">
             <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
               Status:
             </label>
 
             <select
-              value={newStatus}
+              value={effectiveStatus}
               onChange={(e) => setNewStatus(e.target.value)}
               className="
                 border px-3 py-2 rounded-lg w-full
@@ -140,7 +174,6 @@ function TaskDetails() {
               <option value="Completed">Completed</option>
             </select>
 
-            {/* SAVE BUTTON */}
             <button
               onClick={saveStatus}
               className="
@@ -151,6 +184,23 @@ function TaskDetails() {
             >
               Save Status
             </button>
+          </div>
+        ) : (
+          <div className="mt-4">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Status:
+            </span>{" "}
+            <span
+              className={`px-2 py-1 text-xs rounded text-white ${
+                effectiveStatus === "Pending"
+                  ? "bg-yellow-600"
+                  : effectiveStatus === "In Progress"
+                  ? "bg-blue-600"
+                  : "bg-green-600"
+              }`}
+            >
+              {effectiveStatus}
+            </span>
           </div>
         )}
 
@@ -181,13 +231,23 @@ function TaskDetails() {
               Delete
             </button>
           )}
+
+          <Link
+            href="/tasks"
+            className="
+              ml-auto text-sm text-blue-600 dark:text-blue-400
+              hover:underline
+            "
+          >
+            ← Back to tasks
+          </Link>
         </div>
       </div>
     </div>
   );
 }
 
-export default function Page() {
+export default function PageWrapper() {
   return (
     <ProtectedRoute>
       <TaskDetails />

@@ -1,10 +1,4 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  OneToMany,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { User } from './user.entity';
 import { Task } from './task.entity';
 
@@ -15,14 +9,6 @@ export class Organization {
 
   @Column()
   name: string;
-
-  // parent organization (nullable)
-  @ManyToOne(() => Organization, (org) => org.children, { nullable: true })
-  parent: Organization;
-
-  // children of this org
-  @OneToMany(() => Organization, (org) => org.parent)
-  children: Organization[];
 
   @OneToMany(() => User, (user) => user.organization)
   users: User[];

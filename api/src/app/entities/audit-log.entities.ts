@@ -1,4 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+} from 'typeorm';
 
 @Entity()
 export class AuditLog {
@@ -14,9 +19,10 @@ export class AuditLog {
   @Column()
   role: string;
 
-  @Column()
-  organizationId: number;
+  // ✅ allow NULL to avoid constraint errors
+  @Column({ type: 'integer', nullable: true })
+  organizationId: number | null;
 
   @CreateDateColumn()
-  createdAt: Date;  // IMPORTANT: name must match here
+  createdAt: Date;
 }

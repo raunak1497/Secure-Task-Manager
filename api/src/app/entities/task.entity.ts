@@ -6,7 +6,6 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
-
 import { User } from './user.entity';
 import { Organization } from './organization.entity';
 
@@ -24,15 +23,17 @@ export class Task {
   @Column({ nullable: true })
   category: string;
 
-  // ⭐ The missing status column — this was why your status never updated
   @Column({ default: 'Pending' })
-  status: string;
+  status: string; // 'Pending' | 'In Progress' | 'Completed'
 
-  @ManyToOne(() => User, (user) => user.tasks, { eager: false })
-  createdBy: User;
+  @ManyToOne(() => User, (user) => user.tasks, { eager: false, nullable: true })
+  createdBy: User | null;
 
-  @ManyToOne(() => Organization, (org) => org.tasks, { eager: false })
-  organization: Organization;
+  @ManyToOne(() => Organization, (org) => org.tasks, {
+    eager: false,
+    nullable: true,
+  })
+  organization: Organization | null;
 
   @CreateDateColumn()
   createdAt: Date;

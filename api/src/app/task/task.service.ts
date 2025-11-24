@@ -1,4 +1,8 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -8,8 +12,8 @@ import { Organization } from '../entities/organization.entity.js';
 
 import { CreateTaskDto } from './dto/create-task.dto.js';
 import { UpdateTaskDto } from './dto/update-task.dto.js';
+import { AuditLogService } from '../audit-log/audit-log.service.js';
 
-// Shape of req.user (from JwtStrategy)
 interface AuthUser {
   id: number;
   email: string;
@@ -23,92 +27,96 @@ export class TaskService {
     @InjectRepository(Task) private tasks: Repository<Task>,
     @InjectRepository(User) private users: Repository<User>,
     @InjectRepository(Organization) private orgs: Repository<Organization>,
+    private auditLog: AuditLogService,
   ) {}
 
+  // -------------------------------------------------------------------------
+  // CREATE — Owner/Admin only (Controller-level guard handles role checking)
+  // -------------------------------------------------------------------------
   async create(dto: CreateTaskDto, authUser: AuthUser) {
-    // Only Owner/Admin should reach here (enforced in controller with @Roles)
     const user = await this.users.findOne({
       where: { id: authUser.id },
       relations: ['organization'],
     });
+
     if (!user) throw new ForbiddenException('User not found');
 
     const task = this.tasks.create({
       title: dto.title,
       description: dto.description,
       category: dto.category,
+      status: 'Pending',
       createdBy: user,
       organization: user.organization,
     });
 
     const saved = await this.tasks.save(task);
-
-    // basic audit log
-    console.log(
-      `[AUDIT] ${authUser.email} (${authUser.role}) created task #${saved.id} in org ${authUser.orgId}`,
-    );
+    this.auditLog.log(`Created task #${saved.id}`, authUser);
 
     return saved;
   }
 
+  // -------------------------------------------------------------------------
+  // FIND ALL — Viewer sees all tasks in their org
+  // -------------------------------------------------------------------------
   async findAll(authUser: AuthUser) {
-    // RBAC visibility
     if (authUser.role === 'OWNER') {
-      // Owner → all tasks
       return this.tasks.find({
-        relations: ['organization'],
+        relations: ['organization', 'createdBy'],
         order: { id: 'DESC' },
       });
     }
 
-    if (authUser.role === 'ADMIN') {
-      // Admin → tasks in same org
-      return this.tasks.find({
-        where: { organization: { id: authUser.orgId } },
-        relations: ['organization'],
-        order: { id: 'DESC' },
-      });
-    }
-
-    // Viewer → tasks in same org created by them (you can tweak if needed)
+    // ADMIN + VIEWER both see all tasks from their org
     return this.tasks.find({
-      where: {
-        organization: { id: authUser.orgId },
-        createdBy: { id: authUser.id },
-      },
-      relations: ['organization'],
+      where: { organization: { id: authUser.orgId } },
+      relations: ['organization', 'createdBy'],
       order: { id: 'DESC' },
     });
   }
 
+  // -------------------------------------------------------------------------
+  // FIND ONE — Viewer can view all tasks in org
+  // -------------------------------------------------------------------------
   async findOne(id: number, authUser: AuthUser) {
     const task = await this.tasks.findOne({
       where: { id },
       relations: ['organization', 'createdBy'],
     });
+
     if (!task) throw new NotFoundException('Task not found');
 
-    // org-level check
+    // ---- AUTO-FIX missing organization ----
+    if (!task.organization) {
+      const org = await this.orgs.findOne({ where: { id: authUser.orgId } });
+      task.organization = org;
+      await this.tasks.save(task);
+    }
+
+    // ---- AUTO-FIX missing creator ----
+    if (!task.createdBy) {
+      const creator = await this.users.findOne({ where: { id: authUser.id } });
+      task.createdBy = creator;
+      await this.tasks.save(task);
+    }
+
+    // ---- ORG ACCESS CHECK (Admin + Viewer) ----
     if (authUser.role !== 'OWNER' && task.organization.id !== authUser.orgId) {
       throw new ForbiddenException('Not allowed to access this task');
     }
 
-    // viewer: must also be creator
-    if (
-      authUser.role === 'VIEWER' &&
-      task.createdBy.id !== authUser.id
-    ) {
-      throw new ForbiddenException('Not allowed to access this task');
-    }
-
+    // Viewer CAN view any task in their org
     return task;
   }
 
+  // -------------------------------------------------------------------------
+  // UPDATE — Owner/Admin OR Creator (Viewer can ONLY edit their own tasks)
+  // -------------------------------------------------------------------------
   async update(id: number, dto: UpdateTaskDto, authUser: AuthUser) {
-    const task = await this.findOne(id, authUser); // includes access checks
+    const task = await this.findOne(id, authUser);
 
-    // Only Owner/Admin, or Viewer who created it
-    const isOwnerOrAdmin = authUser.role === 'OWNER' || authUser.role === 'ADMIN';
+    const isOwnerOrAdmin =
+      authUser.role === 'OWNER' || authUser.role === 'ADMIN';
     const isCreator = task.createdBy.id === authUser.id;
 
     if (!isOwnerOrAdmin && !isCreator) {
@@ -118,26 +126,22 @@ export class TaskService {
     Object.assign(task, dto);
     const saved = await this.tasks.save(task);
 
-    console.log(
-      `[AUDIT] ${authUser.email} (${authUser.role}) updated task #${saved.id}`,
-    );
-
+    this.auditLog.log(`Updated task #${saved.id}`, authUser);
     return saved;
   }
 
+  // -------------------------------------------------------------------------
+  // DELETE — Only Owner/Admin
+  // -------------------------------------------------------------------------
   async remove(id: number, authUser: AuthUser) {
     const task = await this.findOne(id, authUser);
 
-    // Only Owner/Admin can delete
     if (authUser.role !== 'OWNER' && authUser.role !== 'ADMIN') {
       throw new ForbiddenException('Not allowed to delete this task');
     }
 
     await this.tasks.remove(task);
-
-    console.log(
-      `[AUDIT] ${authUser.email} (${authUser.role}) deleted task #${id}`,
-    );
+    this.auditLog.log(`Deleted task #${id}`, authUser);
 
     return { success: true };
   }
